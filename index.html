@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Neon Cyber-Dash</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      background: #06060c;
+      overflow: hidden;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      max-height: 900px;
+      background: #0a0a14;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 10;
+    }
+    .score-box {
+      background: rgba(10, 10, 20, 0.75);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      padding: 8px 16px;
+      border-radius: 8px;
+      backdrop-filter: blur(5px);
+    }
+    .score-val {
+      font-size: 24px;
+      font-weight: 800;
+      color: #00f0ff;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+    }
+    .multiplier-val {
+      font-size: 12px;
+      color: #ff0077;
+      font-weight: bold;
+    }
+    .speed-tier {
+      font-size: 11px;
+      color: #00ff66;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .active-boosters {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+    }
+    .booster-pill {
+      background: rgba(15, 15, 30, 0.85);
+      border: 1px solid;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 110px;
+      justify-content: space-between;
+    }
+    .booster-bar-bg {
+      width: 40px;
+      height: 6px;
+      background: #222;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .booster-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: currentColor;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 6, 12, 0.92);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 30px;
+      text-align: center;
+      z-index: 100;
+      pointer-events: auto;
+      backdrop-filter: blur(10px);
+    }
+    .hidden {
+      display: none !important;
+    }
+    h1 {
+      font-size: 32px;
+      background: linear-gradient(135deg, #00f0ff, #ff0077);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    p {
+      color: #a0a0c0;
+      font-size: 14px;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+    .btn {
+      background: linear-gradient(135deg, #00f0ff, #7000ff);
+      border: none;
+      color: #fff;
+      padding: 14px 32px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+      transition: transform 0.1s, box-shadow 0.1s;
+      margin-top: 10px;
+      width: 80%;
+      max-width: 240px;
+    }
+    .btn:active {
+      transform: scale(0.96);
+    }
+    .speed-up-banner {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(255, 0, 119, 0.9);
+      color: white;
+      padding: 12px 28px;
+      border-radius: 20px;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 0 25px #ff0077;
+      z-index: 50;
+      text-align: center;
+    }
+    .speed-up-banner.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+    .touch-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="ui-layer">
+      <div class="hud-top">
+        <div class="score-box">
+          <div class="score-val" id="score">0</div>
+          <div class="speed-tier" id="speed-tier">SPD LEVEL 1</div>
+        </div>
+        <div class="active-boosters" id="booster-hud"></div>
+      </div>
+      <div class="touch-hint">Drag to move • Swipe UP to Hyper-Dash</div>
+    </div>
+
+    <div class="speed-up-banner" id="speed-banner">SPEED UP! ⚡</div>
+
+    <!-- Start Menu -->
+    <div class="overlay" id="start-menu">
+      <h1>Neon Cyber-Dash</h1>
+      <p>Drag your thumb to move ship.<br>Dodge obstacles, grab power-ups, and survive the ever-increasing cyber speed!</p>
+      <button class="btn" id="start-btn">PLAY NOW</button>
+    </div>
+
+    <!-- Game Over Menu -->
+    <div class="overlay hidden" id="gameover-menu">
+      <h1 style="background: linear-gradient(135deg, #ff0055, #ff5500); -webkit-background-clip: text;">SYSTEM CRASH</h1>
+      <p id="final-score">Score: 0</p>
+      <p id="high-score" style="color: #00f0ff;">High Score: 0</p>
+      <button class="btn" id="restart-btn">TRY AGAIN</button>
+    </div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const speedTierEl = document.getElementById('speed-tier');
+    const boosterHudEl = document.getElementById('booster-hud');
+    const speedBanner = document.getElementById('speed-banner');
+    const startMenu = document.getElementById('start-menu');
+    const gameoverMenu = document.getElementById('gameover-menu');
+    const finalScoreEl = document.getElementById('final-score');
+    const highScoreEl = document.getElementById('high-score');
+
+    let W, H;
+    function resize() {
+      const container = document.getElementById('game-container');
+      W = canvas.width = container.clientWidth;
+      H = canvas.height = container.clientHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Audio Synthesizer
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioCtx();
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if (type === 'score') {
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === 'booster') {
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (type === 'speedup') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.3);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'hit') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      }
+    }
+
+    // Game State
+    let isPlaying = false;
+    let score = 0;
+    let speedLevel = 1;
+    let baseSpeed = 4;
+    let currentSpeed = 4;
+    let highScore = localStorage.getItem('cyberdash_hi') || 0;
+
+    const player = {
+      x: 0,
+      y: 0,
+      radius: 18,
+      targetX: 0,
+      targetY: 0,
+      trail: [],
+      shield: false,
+      magnet: false,
+      multiplier: false,
+      hyperDash: false
+    };
+
+    let boostTimers = {
+      shield: 0,
+      magnet: 0,
+      multiplier: 0,
+      hyperDash: 0
+    };
+
+    let obstacles = [];
+    let powerups = [];
+    let particles = [];
+    let stars = [];
+
+    for (let i = 0; i < 40; i++) {
+      stars.push({
+        x: Math.random() * 500,
+        y: Math.random() * 900,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 2 + 0.5
+      });
+    }
+
+    // Touch Handling
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isTouching = false;
+
+    window.addEventListener('touchstart', (e) => {
+      initAudio();
+      const t = e.touches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      isTouching = true;
+    }, {passive: true});
+
+    window.addEventListener('touchmove', (e) => {
+      if (!isPlaying || !isTouching) return;
+      const t = e.touches[0];
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+
+      player.targetX += dx;
+      player.targetY += dy;
+
+      player.targetX = Math.max(player.radius, Math.min(W - player.radius, player.targetX));
+      player.targetY = Math.max(player.radius, Math.min(H - player.radius, player.targetY));
+
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+    }, {passive: true});
+
+    window.addEventListener('touchend', () => isTouching = false);
+
+    // Mouse fallback for testing
+    window.addEventListener('mousemove', (e) => {
+      if (!isPlaying) return;
+      const rect = canvas.getBoundingClientRect();
+      player.targetX = e.clientX - rect.left;
+      player.targetY = e.clientY - rect.top;
+    });
+
+    function spawnObstacle() {
+      const size = Math.random() * 24 + 20;
+      obstacles.push({
+        x: Math.random() * (W - size * 2) + size,
+        y: -size,
+        size: size,
+        speed: currentSpeed + Math.random() * 2,
+        color: '#ff0055'
+      });
+    }
+
+    function spawnPowerup() {
+      const types = ['shield', 'magnet', 'multiplier', 'hyperDash'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const colors = { shield: '#00ff66', magnet: '#ffaa00', multiplier: '#ff0077', hyperDash: '#00f0ff' };
+      powerups.push({
+        x: Math.random() * (W - 40) + 20,
+        y: -20,
+        type: type,
+        color: colors[type],
+        radius: 14
+      });
+    }
+
+    function triggerSpeedUp() {
+      speedLevel++;
+      currentSpeed = baseSpeed + (speedLevel - 1) * 0.8;
+      speedTierEl.innerText = `SPD LEVEL ${speedLevel}`;
+      speedBanner.innerText = `SPEED LEVEL ${speedLevel}! ⚡`;
+      speedBanner.classList.add('show');
+      playSound('speedup');
+      setTimeout(() => speedBanner.classList.remove('show'), 1200);
+    }
+
+    function activatePowerup(type) {
+      playSound('booster');
+      boostTimers[type] = 300; // ~5 seconds at 60fps
+    }
+
+    function startGame() {
+      score = 0;
+      speedLevel = 1;
+      currentSpeed = baseSpeed;
+      obstacles = [];
+      powerups = [];
+      particles = [];
+      boostTimers = { shield: 0, magnet: 0, multiplier: 0, hyperDash: 0 };
+      
+      player.x = W / 2;
+      player.y = H - 100;
+      player.targetX = player.x;
+      player.targetY = player.y;
+
+      scoreEl.innerText = '0';
+      speedTierEl.innerText = 'SPD LEVEL 1';
+
+      startMenu.classList.add('hidden');
+      gameoverMenu.classList.add('hidden');
+      isPlaying = true;
+    }
+
+    function gameOver() {
+      isPlaying = false;
+      playSound('hit');
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('cyberdash_hi', highScore);
+      }
+      finalScoreEl.innerText = `Final Score: ${score}`;
+      highScoreEl.innerText = `High Score: ${highScore}`;
+      gameoverMenu.classList.remove('hidden');
+    }
+
+    let frameCount = 0;
+    function update() {
+      if (!isPlaying) return;
+
+      frameCount++;
+
+      // Player Movement Smoothing
+      player.x += (player.targetX - player.x) * 0.2;
+      player.y += (player.targetY - player.y) * 0.2;
+
+      player.trail.unshift({x: player.x, y: player.y});
+      if (player.trail.length > 10) player.trail.pop();
+
+      // Power-up Timers & Flags
+      player.shield = boostTimers.shield > 0;
+      player.magnet = boostTimers.magnet > 0;
+      player.multiplier = boostTimers.multiplier > 0;
+      player.hyperDash = boostTimers.hyperDash > 0;
+
+      for (let k in boostTimers) {
+        if (boostTimers[k] > 0) boostTimers[k]--;
+      }
+
+      // Dynamic Speed Tier Checks
+      const targetTier = Math.floor(score / 100) + 1;
+      if (targetTier > speedLevel) {
+        triggerSpeedUp();
+      }
+
+      // Spawning
+      if (frameCount % Math.max(15, 45 - speedLevel * 2) === 0) spawnObstacle();
+      if (frameCount % 180 === 0) spawnPowerup();
+
+      // Update Stars
+      stars.forEach(s => {
+        s.y += s.speed * (currentSpeed / 4);
+        if (s.y > H) s.y = 0;
+      });
+
+      // Update Powerups
+      for (let i = powerups.length - 1; i >= 0; i--) {
+        let p = powerups[i];
+        p.y += currentSpeed * 0.8;
+
+        if (player.magnet) {
+          let dx = player.x - p.x;
+          let dy = player.y - p.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist < 180) {
+            p.x += (dx / dist) * 6;
+            p.y += (dy / dist) * 6;
+          }
+        }
+
+        let dist = Math.hypot(player.x - p.x, player.y - p.y);
+        if (dist < player.radius + p.radius) {
+          activatePowerup(p.type);
+          powerups.splice(i, 1);
+          continue;
+        }
+
+        if (p.y > H + 50) powerups.splice(i, 1);
+      }
+
+      // Update Obstacles
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        let o = obstacles[i];
+        o.y += o.speed;
+
+        let dist = Math.hypot(player.x - o.x, player.y - o.y);
+        if (dist < player.radius + o.size) {
+          if (player.hyperDash) {
+            obstacles.splice(i, 1);
+            playSound('hit');
+            continue;
+          } else if (player.shield) {
+            boostTimers.shield = 0;
+            obstacles.splice(i, 1);
+            playSound('hit');
+            continue;
+          } else {
+            gameOver();
+            return;
+          }
+        }
+
+        if (o.y > H + 50) {
+          obstacles.splice(i, 1);
+          const pts = player.multiplier ? 20 : 10;
+          score += pts;
+          scoreEl.innerText = score;
+          playSound('score');
+        }
+      }
+
+      // Render HUD Booster Indicators
+      boosterHudEl.innerHTML = '';
+      const activeTypes = [
+        { key: 'hyperDash', label: 'DASH', color: '#00f0ff' },
+        { key: 'shield', label: 'SHIELD', color: '#00ff66' },
+        { key: 'multiplier', label: '2X PTS', color: '#ff0077' },
+        { key: 'magnet', label: 'MAGNET', color: '#ffaa00' }
+      ];
+
+      activeTypes.forEach(b => {
+        if (boostTimers[b.key] > 0) {
+          const pct = (boostTimers[b.key] / 300) * 100;
+          const pill = document.createElement('div');
+          pill.className = 'booster-pill';
+          pill.style.color = b.color;
+          pill.style.borderColor = b.color;
+          pill.innerHTML = `<span>${b.label}</span><div class="booster-bar-bg"><div class="booster-bar-fill" style="width:${pct}%; background:${b.color}"></div></div>`;
+          boosterHudEl.appendChild(pill);
+        }
+      });
+    }
+
+    function draw() {
+      ctx.fillStyle = '#06060c';
+      ctx.fillRect(0, 0, W, H);
+
+      // Stars
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      stars.forEach(s => {
+        ctx.fillRect(s.x, s.y, s.size, s.size);
+      });
+
+      if (isPlaying) {
+        // Player Trail
+        player.trail.forEach((t, index) => {
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, player.radius * (1 - index / 10), 0, Math.PI * 2);
+          ctx.fillStyle = player.hyperDash ? `rgba(0, 240, 255, ${1 - index / 10})` : `rgba(255, 0, 119, ${1 - index / 10})`;
+          ctx.fill();
+        });
+
+        // Player Ship
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.beginPath();
+        ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+        ctx.fillStyle = player.hyperDash ? '#00f0ff' : '#ff0077';
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 15;
+        ctx.fill();
+
+        if (player.shield) {
+          ctx.beginPath();
+          ctx.arc(0, 0, player.radius + 6, 0, Math.PI * 2);
+          ctx.strokeStyle = '#00ff66';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+
+        ctx.restore();
+
+        // Powerups
+        powerups.forEach(p => {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.beginPath();
+          ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 10;
+          ctx.fill();
+          ctx.restore();
+        });
+
+        // Obstacles
+        obstacles.forEach(o => {
+          ctx.save();
+          ctx.translate(o.x, o.y);
+          ctx.beginPath();
+          ctx.arc(0, 0, o.size, 0, Math.PI * 2);
+          ctx.fillStyle = o.color;
+          ctx.shadowColor = o.color;
+          ctx.shadowBlur = 12;
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      requestAnimationFrame(() => {
+        update();
+        draw();
+      });
+    }
+
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    document.getElementById('restart-btn').addEventListener('click', startGame);
+
+    draw();
+  </script>
+</body>
+</html>
